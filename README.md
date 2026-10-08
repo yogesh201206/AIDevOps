@@ -1,41 +1,84 @@
 # AI DevOps Agent
 
-> **Phase 2 — GitHub Integration**  
-> A production-oriented, AI-powered DevOps agent that investigates failed deployments, analyzes GitHub Actions logs, identifies probable root causes, and suggests fixes.
+> **Phase 3 — AI DevOps Investigation Engine**  
+> An automated, production-oriented DevOps agent that investigates failed GitHub Actions workflow runs, processes and sanitizes execution logs, performs root-cause diagnostics via OmniRoute, and provides actionable, evidence-backed recommendations for engineers.
+
+---
+
+## Important Phase 3 Boundary
+
+> [!IMPORTANT]
+> **Phase 3 provides analysis and suggested fixes only. No automatic changes are executed.**  
+> The agent diagnoses failures, quotes evidence, and suggests concrete fixes, but **NEVER** autonomously applies fixes, executes code modifications, commits to repositories, or alters production infrastructure.
 
 ---
 
 ## Overview
 
-AI DevOps Agent is built with a clean, extensible architecture. Each phase layers functionality on top of the previous one without requiring structural rewrites.
+AI DevOps Agent is built with a modular, layered architecture. Each phase expands capabilities without breaking prior foundations:
 
 | Phase | Name | Status |
 |-------|------|--------|
-| **1** | Foundation | ✅ Complete |
-| **2** | GitHub Integration (this release) | ✅ Complete |
-| **3** | AI Investigation Engine | Upcoming |
-| **4** | Docker & Kubernetes Analysis | Upcoming |
-| **5** | Security, CI/CD & Production Hardening | Upcoming |
+| **1** | Foundation & Health Architecture | ✅ Complete |
+| **2** | GitHub Integration (Workflows, Runs, Jobs, Logs) | ✅ Complete |
+| **3** | **AI Investigation Engine (OmniRoute, Log Redaction, RCA)** | ✅ **Complete (Current)** |
+| **4** | Docker & Kubernetes Intelligence | Upcoming |
+| **5** | MCP & Advanced Infrastructure Tooling | Upcoming |
 
 ---
 
-## Architecture
+## Phase 3 Architecture
 
 ```
-Browser ──► React (Vite) ──► FastAPI (Uvicorn) ──► GitHub REST API
-              Port 5173          Port 8000               api.github.com
-                                   │
-                             Pydantic-Settings
-                             GitHub Client / Service
-                             Structured Error Handling
+React Frontend (Port 5173)
+       │
+       ▼  HTTP REST (FastAPI, Port 8000)
+Investigation Service
+       │
+       ├──► GitHub Service ──► GitHub REST API (Run / Jobs / Logs)
+       │
+       ├──► Log Processor (ANSI strip, Secret Redaction, Error Hot-Spot Truncation)
+       │
+       ├──► Investigation Context Builder
+       │
+       └──► AI Service ──► OmniRoute Client (OpenAI-Compatible Gateway)
+                              │
+                              ▼  (Port 20128/v1)
+                           OmniRoute / LLM
+                              │
+                              ▼  Structured JSON Output
+                        Parser & Pydantic Validation
+                              │
+       ◄──────────────────────┘  InvestigationResponse
+React Investigation UI
 ```
 
-### Security Architecture
+---
 
-- **Token Isolation**: The browser communicates **only** with the FastAPI backend.
-- The `GITHUB_TOKEN` is **never** sent to or accessible by the frontend.
-- Tokens are loaded strictly into backend process memory via environment variables (`.env`).
-- Tokens are excluded from log statements, error payloads, and source code.
+## How AI Investigation Works
+
+1. **Trigger**: An engineer selects a failed workflow run in the Repositories view or enters a repository and run ID on the Investigations page, clicking **"Investigate with AI"**.
+2. **Workflow Inspection**: The backend retrieves run details, verifies failure status (successful runs cleanly bypass AI analysis), and extracts all jobs and failed steps.
+3. **Preceding Step Extraction**: Preceding steps before failures are included because earlier configuration or installation anomalies frequently cause downstream steps to fail.
+4. **Log Retrieval & Secret Redaction**: Diagnostic logs are retrieved and processed through `LogProcessor`:
+   - All GitHub tokens (`ghp_`, `github_pat_`), Bearer tokens, private keys, passwords, and connection strings are replaced with `[REDACTED_SECRET]`.
+   - ANSI escape codes and terminal artifacts are stripped.
+   - Error regions, stack traces, and exit codes are detected.
+   - Intelligent windowed truncation preserves the pipeline setup, error regions, and exit code summary while obeying configured context budgets.
+5. **Context Synthesis**: `ContextBuilder` formats the workflow metadata and sanitized logs into structured technical incident context.
+6. **Inference via OmniRoute**: `OmniRouteClient` sends the structured context with strict senior DevOps system prompts to the configured model through OmniRoute's OpenAI-compatible API (`/v1/chat/completions`).
+7. **Schema Validation & Parsing**: The assistant output is parsed and validated against strict Pydantic schemas (`InvestigationResponse`). Overall confidence and root cause confidences must fall between `0.0` and `1.0`.
+8. **UI Presentation**: The React dashboard displays the executive summary, root cause cards, expandable evidence snippets, affected components, confidence meters, suggested fixes, and validation checklists.
+
+---
+
+## Security Model
+
+Security is paramount in DevOps tooling:
+- **Zero Secrets to Frontend**: API keys (`OMNIROUTE_API_KEY`) and GitHub tokens (`GITHUB_TOKEN`) stay strictly on the backend. No secrets are ever exposed via API responses or frontend bundles.
+- **Log Redaction Defense**: Potential secrets, credentials, tokens, and keys in raw execution logs are scrubbed with `LogProcessor.redact_secrets` before prompts are built or sent to any LLM.
+- **Read & Suggest Only**: The AI engine produces recommendations for human review. It has no capabilities to autonomously modify code or commit fixes.
+- **Safe Structured Logging**: Operational logs contain investigation metadata (run ID, step count, durations), but never log tokens, passwords, or full raw AI prompt texts.
 
 ---
 
@@ -44,10 +87,11 @@ Browser ──► React (Vite) ──► FastAPI (Uvicorn) ──► GitHub REST
 | Layer | Technology |
 |-------|-----------|
 | **Backend** | Python 3.12+, FastAPI, Uvicorn, Pydantic v2, pydantic-settings, httpx |
+| **AI Abstraction** | OmniRoute (OpenAI-compatible gateway client) |
 | **Frontend** | React 18, Vite, React Router v6, Axios |
-| **Testing (backend)** | pytest, pytest-asyncio, httpx (mocked GitHub transport) |
-| **Testing (frontend)** | Vitest, Testing Library |
-| **DevOps** | Docker, Docker Compose |
+| **Testing (Backend)** | pytest, pytest-asyncio, httpx (offline mocked transports) |
+| **Testing (Frontend)** | Vitest, Testing Library, jsdom |
+| **Containerization** | Docker, Docker Compose |
 
 ---
 
@@ -58,85 +102,79 @@ ai-devops-agent/
 │
 ├── backend/
 │   ├── app/
-│   │   ├── main.py              # FastAPI app, CORS, global exception handler
-│   │   ├── config.py            # pydantic-settings configuration
-│   │   ├── logging_config.py    # Centralized structured logging
+│   │   ├── main.py                     # FastAPI entry point & global error handlers
+│   │   ├── config.py                   # Pydantic settings & OmniRoute configuration
+│   │   ├── logging_config.py           # Structured application logging
 │   │   ├── api/
-│   │   │   ├── __init__.py      # Aggregated api_router
-│   │   │   ├── health.py        # GET /health, GET /health/ready
-│   │   │   └── github.py        # GitHub REST endpoints
-│   │   ├── github/
-│   │   │   ├── __init__.py      # Module exports
-│   │   │   ├── client.py        # Reusable async HTTP client (httpx)
-│   │   │   ├── service.py       # Domain logic & schema normalization
-│   │   │   ├── schemas.py       # Pydantic models
-│   │   │   └── exceptions.py    # Structured GitHub exceptions
-│   │   ├── core/
-│   │   │   └── __init__.py
-│   │   └── models/
-│   │       └── __init__.py
+│   │   │   ├── __init__.py             # API router aggregation
+│   │   │   ├── health.py               # GET /health, GET /health/ready
+│   │   │   ├── github.py               # GitHub integration endpoints
+│   │   │   ├── ai.py                   # GET /api/v1/ai/status
+│   │   │   └── investigations.py       # POST /investigations, GET /investigations
+│   │   ├── github/                     # GitHub client, service, schemas, exceptions
+│   │   └── services/
+│   │       ├── ai/
+│   │       │   ├── omniroute_client.py # Reusable OpenAI-compatible HTTP client
+│   │       │   ├── ai_service.py       # High-level AI operations & health checks
+│   │       │   ├── prompts.py          # DevOps investigator system & user prompts
+│   │       │   ├── parser.py           # Robust JSON extractor & Pydantic validation
+│   │       │   └── exceptions.py       # AIException, AIUnavailableError, AITimeoutError
+│   │       └── investigation/
+│   │           ├── log_processor.py    # Secret redaction, ANSI strip, log truncation
+│   │           ├── context_builder.py  # Structured prompt context composer
+│   │           ├── storage.py          # Investigation history storage repository
+│   │           ├── schemas.py          # Pydantic investigation schemas
+│   │           └── investigation_service.py # Core investigation orchestration
 │   ├── tests/
-│   │   ├── test_health.py       # Liveness/readiness tests
-│   │   ├── test_github.py       # GitHub client & endpoint test suite
-│   │   └── test_contract.py     # Frontend/Backend contract verification
+│   │   ├── test_health.py              # Health endpoint tests
+│   │   ├── test_github.py              # GitHub service and endpoint tests
+│   │   ├── test_contract.py            # API contract tests (including Phase 3)
+│   │   └── test_ai_investigation.py    # 20 comprehensive AI & investigation tests
 │   ├── requirements.txt
 │   ├── Dockerfile
 │   └── pytest.ini
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx              # React Router routes (/ & /repositories)
-│   │   ├── main.jsx             # Entry point
-│   │   ├── index.css            # Dark slate design system tokens + styling
+│   │   ├── App.jsx                     # Router routes (/, /repositories, /investigations)
+│   │   ├── index.css                   # Global dark-first CSS design tokens & styles
 │   │   ├── components/
-│   │   │   ├── Sidebar.jsx      # Navigation sidebar
-│   │   │   ├── Topbar.jsx       # Header bar
-│   │   │   ├── GitHubStatusCard.jsx # Live connection status banner
-│   │   │   ├── RepositoryDetail.jsx # Repo detail with tabs
-│   │   │   └── WorkflowRunsView.jsx # Workflow runs, failure & log diagnostics
+│   │   │   ├── AIStatusCard.jsx        # OmniRoute connectivity status card
+│   │   │   ├── InvestigationResultCard.jsx # Full diagnostic report UI component
+│   │   │   ├── WorkflowRunsView.jsx    # Workflow runs, failure diagnostics & AI trigger
+│   │   │   ├── GitHubStatusCard.jsx    # GitHub connection status banner
+│   │   │   ├── RepositoryDetail.jsx    # Repo detail tabs
+│   │   │   ├── Sidebar.jsx             # Left navigation
+│   │   │   └── Topbar.jsx              # Application header
 │   │   ├── pages/
-│   │   │   ├── Dashboard.jsx    # Live system status & overview
-│   │   │   ├── Repositories.jsx # Functional repository browser & inspection
-│   │   │   └── ComingSoon.jsx   # Phase 3-5 placeholders
+│   │   │   ├── Dashboard.jsx           # Dashboard overview
+│   │   │   ├── Repositories.jsx        # Repository browser & run diagnostics
+│   │   │   ├── Investigations.jsx      # Dedicated investigations history & launcher
+│   │   │   └── ComingSoon.jsx          # Phase 4-5 placeholders
 │   │   └── services/
-│   │       ├── api.js           # Base Axios client & error interceptor
-│   │       └── github.js        # GitHub API service functions
+│   │       ├── api.js                  # Axios client & interceptor
+│   │       ├── github.js               # GitHub API client functions
+│   │       └── investigations.js       # Investigations & AI status client functions
 │   ├── tests/
-│   │   ├── setup.js             # jest-dom setup
-│   │   ├── smoke.test.jsx       # App shell & Dashboard smoke tests
-│   │   └── repositories.test.jsx# Repositories & Workflow runs tests
+│   │   ├── smoke.test.jsx              # Navigation and shell smoke tests
+│   │   ├── repositories.test.jsx       # Repositories & runs test suite
+│   │   └── investigations.test.jsx     # AI status, trigger, and result rendering tests
 │   ├── package.json
 │   ├── vite.config.js
 │   └── Dockerfile
 │
+├── .github/
+│   └── workflows/
+│       └── ci.yml                      # GitHub Actions CI workflow
 ├── docker-compose.yml
 ├── .env.example
-├── .gitignore
 ├── LICENSE
 └── README.md
 ```
 
 ---
 
-## GitHub Authentication Setup
-
-### 1. Creating a Personal Access Token (PAT)
-
-1. Log into your GitHub account and navigate to **Settings** → **Developer Settings** → **Personal Access Tokens**.
-2. Select **Tokens (classic)** or **Fine-grained personal access tokens**.
-3. Grant the required permissions:
-   - For Classic tokens:
-     - `repo` (Full control of private repositories)
-     - `actions:read` (View workflow runs and job logs)
-   - For Fine-grained tokens:
-     - **Repository access**: Select repositories to monitor
-     - **Repository permissions**:
-       - `Actions`: Read-only
-       - `Contents`: Read-only
-       - `Metadata`: Read-only
-4. Generate and copy the token.
-
-### 2. Configure Local Environment
+## Configuration & Environment Variables
 
 Copy `.env.example` to `.env` in the project root:
 
@@ -144,18 +182,61 @@ Copy `.env.example` to `.env` in the project root:
 cp .env.example .env
 ```
 
-Add your token to `.env`:
-
-```bash
-GITHUB_TOKEN=your_token_here
-GITHUB_API_URL=https://api.github.com
-```
-
-> **Security Note:** Never commit `.env` or paste real tokens in configuration examples, tests, or documentation.
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GITHUB_TOKEN` | *(empty)* | Personal Access Token with `actions:read`, `repo` permissions |
+| `GITHUB_API_URL` | `https://api.github.com` | Base URL for GitHub API |
+| `OMNIROUTE_BASE_URL` | `http://localhost:20128/v1` | Base URL for OmniRoute gateway |
+| `OMNIROUTE_API_KEY` | *(empty)* | API key if OmniRoute authentication is enabled |
+| `OMNIROUTE_MODEL` | `gpt-4o-mini` | AI model identifier to route requests to |
+| `OMNIROUTE_TIMEOUT` | `120` | HTTP timeout (in seconds) for AI completions |
+| `AI_TEMPERATURE` | `0.1` | Temperature for deterministic diagnostic reasoning |
+| `MAX_LOG_CHARS` | `50000` | Maximum character budget for diagnostic logs |
+| `MAX_CONTEXT_CHARS` | `30000` | Maximum character budget for prompt context |
 
 ---
 
-## Local Setup & Execution
+## OmniRoute Setup
+
+OmniRoute acts as the vendor-agnostic AI provider layer.
+
+### 1. Start OmniRoute
+Ensure your OmniRoute instance is running on port 20128:
+
+```bash
+# Example if using OmniRoute CLI or container:
+omniroute serve --port 20128
+```
+
+### 2. Verify OmniRoute Health
+Check the OpenAI-compatible `/models` endpoint:
+
+```bash
+curl http://localhost:20128/v1/models
+```
+
+### 3. Check Backend AI Provider Status
+Once the backend is running:
+
+```bash
+curl http://localhost:8000/api/v1/ai/status
+```
+
+Response:
+```json
+{
+  "configured": true,
+  "available": true,
+  "provider": "omniroute",
+  "model": "gpt-4o-mini"
+}
+```
+
+*Note: The backend remains fully operational even when OmniRoute is offline. If unreachable, `available` will be `false` without crashing.*
+
+---
+
+## Local Development Execution
 
 ### 1. Run the Backend
 
@@ -166,8 +247,8 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-Backend will be available at: **http://localhost:8000**  
-Interactive API Documentation: **http://localhost:8000/docs**
+- Backend API: **http://localhost:8000**
+- Interactive Swagger Docs: **http://localhost:8000/docs**
 
 ### 2. Run the Frontend
 
@@ -177,121 +258,68 @@ npm install
 npm run dev
 ```
 
-Frontend will be available at: **http://localhost:5173**  
-Repositories View: **http://localhost:5173/repositories**
+- Frontend Dashboard: **http://localhost:5173**
+- Repositories & Runs: **http://localhost:5173/repositories**
+- Investigations Page: **http://localhost:5173/investigations**
 
 ---
 
 ## Running with Docker Compose
 
-Ensure `.env` exists in the project root:
+To start both the frontend and backend in Docker:
 
 ```bash
 docker compose up --build
 ```
 
-| Service | URL |
-|---------|-----|
-| Frontend | http://localhost:5173 |
-| Backend API | http://localhost:8000 |
-| GitHub Status | http://localhost:8000/api/v1/github/status |
-| API Docs (Swagger) | http://localhost:8000/docs |
+For host-to-container communication with a locally running OmniRoute on Linux, `docker-compose.yml` configures `host.docker.internal:host-gateway`.
 
 ---
 
-## Running Tests
+## Testing
 
-All tests run completely offline and use mocked GitHub responses. Tests pass with or without a configured `GITHUB_TOKEN`.
+All tests are completely offline and use mocked GitHub and OmniRoute transports.
 
-### Backend Tests
+### Run Backend Tests
 
 ```bash
 cd backend
 source .venv/bin/activate
-pytest
+pytest -v
 ```
 
-**Results**: 38 passed in < 1s (includes health checks, GitHub API endpoints, error handling, and contract tests).
+**Results**: 58 passed (covers health endpoints, GitHub integration, OmniRoute client, parser validation, log redaction, large log truncation, context builder, and investigation history).
 
-### Frontend Tests
+### Run Frontend Tests
 
 ```bash
 cd frontend
 npm test
 ```
 
-**Results**: 17 passed across 2 test files (smoke tests and repository/workflow diagnostic tests).
+**Results**: 27 passed across 3 test files (smoke tests, repositories, and AI investigations).
 
----
+### Build Frontend Bundle
 
-## GitHub API Endpoints
-
-All endpoints are mounted under `/api/v1`:
-
-### Connection Health
-
-- `GET /api/v1/github/status`
-  - Returns connection state, authenticated username, and rate limit remaining.
-  - If unconfigured, returns `connected: false` without crashing.
-
-### Repositories
-
-- `GET /api/v1/github/repositories`
-  - Query parameters: `page`, `per_page`, `sort`.
-  - Returns accessible repositories for authenticated user.
-- `GET /api/v1/github/repositories/{owner}/{repo}`
-  - Returns detailed metadata for a single repository.
-
-### Branches & Commits
-
-- `GET /api/v1/github/repositories/{owner}/{repo}/branches`
-  - Returns branches and head commit SHAs.
-- `GET /api/v1/github/repositories/{owner}/{repo}/commits`
-  - Query parameters: `page`, `per_page`.
-  - Returns commit history with short SHAs, authors, messages, and dates.
-
-### GitHub Actions
-
-- `GET /api/v1/github/repositories/{owner}/{repo}/workflows`
-  - Returns defined Actions workflows.
-- `GET /api/v1/github/repositories/{owner}/{repo}/runs`
-  - Query parameters: `status`, `branch`, `page`, `per_page`.
-  - Returns recent workflow runs with failure flags.
-- `GET /api/v1/github/repositories/{owner}/{repo}/runs/{run_id}`
-  - Returns detailed run metadata.
-- `GET /api/v1/github/repositories/{owner}/{repo}/runs/{run_id}/jobs`
-  - Returns jobs and steps, highlighting failed jobs and steps for diagnosis.
-
-### Diagnostics & Failure Logs
-
-- `GET /api/v1/github/repositories/{owner}/{repo}/runs/{run_id}/logs`
-  - Query parameters: `max_lines` (default: 500).
-  - Retrieves diagnostic log snippets from failed jobs (tail-truncated for performance).
-- `GET /api/v1/github/repositories/{owner}/{repo}/jobs/{job_id}/logs`
-  - Retrieves log output for a specific job.
-
----
-
-## Error Handling Standards
-
-All GitHub errors are normalized into consistent application payloads:
-
-```json
-{
-  "detail": {
-    "code": "GITHUB_AUTH_ERROR",
-    "message": "GitHub authentication failed. Check your GITHUB_TOKEN."
-  }
-}
+```bash
+cd frontend
+npm run build
 ```
 
-Standard Error Codes:
-- `GITHUB_NOT_CONFIGURED` (400)
-- `GITHUB_AUTH_ERROR` (401)
-- `GITHUB_FORBIDDEN` (403)
-- `GITHUB_NOT_FOUND` (404)
-- `GITHUB_VALIDATION_ERROR` (422)
-- `GITHUB_RATE_LIMITED` (429)
-- `GITHUB_SERVER_ERROR` (502)
-- `GITHUB_NETWORK_ERROR` (503)
-- `GITHUB_TIMEOUT` (504)
+---
+
+## Phase 3 REST API Endpoints
+
+### AI Provider Status
+- `GET /api/v1/ai/status`
+  - Returns `{ "configured": true, "available": true, "provider": "omniroute", "model": "gpt-4o-mini" }`.
+
+### Investigation Endpoints
+- `POST /api/v1/investigations`
+  - Body: `{ "owner": "org", "repo": "repo-name", "run_id": 12345 }`
+  - Dispatches failure analysis, extracts failed steps and preceding steps, sanitizes logs, queries OmniRoute, and returns structured diagnosis.
+- `GET /api/v1/investigations`
+  - Query parameters: `repository`, `limit`.
+  - Returns historical investigation records sorted newest first.
+- `GET /api/v1/investigations/{investigation_id}`
+  - Returns detailed report for a specific investigation.

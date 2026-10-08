@@ -13,12 +13,16 @@ from fastapi import APIRouter
 
 from app.api.health import router as health_router
 from app.api.github import router as github_router
+from app.api.ai import router as ai_router
+from app.api.investigations import router as investigations_router
 
 # Top-level v1 router – all feature routers are included here
 api_router = APIRouter()
 
 api_router.include_router(health_router)
 api_router.include_router(github_router)
+api_router.include_router(ai_router)
+api_router.include_router(investigations_router)
 
 # Future phase routers – uncomment as implemented:
 # from app.api.agents   import router as agents_router

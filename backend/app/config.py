@@ -58,10 +58,14 @@ class Settings(BaseSettings):
     GITHUB_APP_ID: str | None = None
     GITHUB_WEBHOOK_SECRET: str | None = None
 
-    # ── Future: AI / LLM Provider (Phase 3) ──────────────────────────────────
-    OMNIROUTE_BASE_URL: str | None = None
+    # ── AI / LLM Provider (Phase 3) ──────────────────────────────────────────
+    OMNIROUTE_BASE_URL: str = "http://localhost:20128/v1"
     OMNIROUTE_API_KEY: str | None = None
-    OMNIROUTE_MODEL: str | None = None
+    OMNIROUTE_MODEL: str = "gpt-4o-mini"
+    OMNIROUTE_TIMEOUT: int = 120
+    AI_TEMPERATURE: float = 0.1
+    MAX_LOG_CHARS: int = 50000
+    MAX_CONTEXT_CHARS: int = 30000
 
     # ── Future: Kubernetes (Phase 4) ─────────────────────────────────────────
     KUBECONFIG: str | None = None

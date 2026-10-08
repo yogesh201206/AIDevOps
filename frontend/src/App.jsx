@@ -9,6 +9,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import MainLayout from './layouts/MainLayout'
 import Dashboard  from './pages/Dashboard'
 import Repositories from './pages/Repositories'
+import Investigations from './pages/Investigations'
 import ComingSoon from './pages/ComingSoon'
 
 export default function App() {
@@ -18,7 +19,7 @@ export default function App() {
         <Route element={<MainLayout />}>
           <Route index           element={<Dashboard />} />
           <Route path="/repositories"   element={<Repositories />} />
-          <Route path="/investigations" element={<ComingSoon />} />
+          <Route path="/investigations" element={<Investigations />} />
           <Route path="/deployments"    element={<ComingSoon />} />
           <Route path="/settings"       element={<ComingSoon />} />
           {/* Catch-all */}

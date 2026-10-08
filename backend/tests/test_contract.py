@@ -180,3 +180,92 @@ class TestFrontendBackendContract:
             assert {"name", "number", "conclusion", "is_failed"}.issubset(step.keys())
         finally:
             app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_ai_status_contract(self, client: AsyncClient):
+        from app.api.ai import get_ai_service
+        from app.services.ai.ai_service import AIService
+        from app.services.investigation.schemas import AIStatusResponse
+
+        mock_ai = AsyncMock(spec=AIService)
+        mock_ai.get_status.return_value = AIStatusResponse(
+            configured=True,
+            available=True,
+            provider="omniroute",
+            model="gpt-4o-mini",
+        )
+        app.dependency_overrides[get_ai_service] = lambda: mock_ai
+        try:
+            resp = await client.get("/api/v1/ai/status")
+            assert resp.status_code == 200
+            data = resp.json()
+            required_keys = {"configured", "available", "provider", "model"}
+            assert required_keys.issubset(data.keys())
+            assert isinstance(data["configured"], bool)
+            assert isinstance(data["available"], bool)
+            assert data["provider"] == "omniroute"
+        finally:
+            app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_investigation_contract(self, client: AsyncClient):
+        from app.api.investigations import get_investigation_service
+        from app.services.investigation.investigation_service import InvestigationService
+        from app.services.investigation.schemas import (
+            Evidence,
+            InvestigationResponse,
+            RootCause,
+            SuggestedFix,
+        )
+
+        mock_inv = AsyncMock(spec=InvestigationService)
+        mock_inv.investigate_workflow_run.return_value = InvestigationResponse(
+            investigation_id="inv_contract123",
+            repository="owner/repo",
+            workflow_run_id=456,
+            workflow_name="CI",
+            status="completed",
+            summary="Test pipeline failed.",
+            root_causes=[RootCause(cause="Dep", explanation="Missing dep", confidence=0.88)],
+            evidence=[Evidence(source="Job", detail="Error line", importance="high")],
+            affected_components=["App"],
+            severity="high",
+            confidence=0.88,
+            suggested_fixes=[SuggestedFix(description="Fix it", reason="Resolves dep issue")],
+            validation_steps=["Verify fix"],
+            model="gpt-4o-mini",
+            provider="omniroute",
+            created_at="2026-10-08T17:00:00Z",
+        )
+        app.dependency_overrides[get_investigation_service] = lambda: mock_inv
+        try:
+            resp = await client.post(
+                "/api/v1/investigations",
+                json={"owner": "owner", "repo": "repo", "run_id": 456},
+            )
+            assert resp.status_code == 200
+            data = resp.json()
+            required_keys = {
+                "investigation_id",
+                "repository",
+                "workflow_run_id",
+                "workflow_name",
+                "status",
+                "summary",
+                "root_causes",
+                "evidence",
+                "affected_components",
+                "severity",
+                "confidence",
+                "suggested_fixes",
+                "validation_steps",
+                "model",
+                "provider",
+            }
+            assert required_keys.issubset(data.keys())
+            assert data["status"] == "completed"
+            assert data["confidence"] == 0.88
+            assert len(data["root_causes"]) == 1
+            assert len(data["suggested_fixes"]) == 1
+        finally:
+            app.dependency_overrides.clear()

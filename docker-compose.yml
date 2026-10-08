@@ -15,7 +15,14 @@ services:
       # GitHub integration – sourced from .env, never hardcoded
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       GITHUB_API_URL: ${GITHUB_API_URL:-https://api.github.com}
+      # Phase 3 – OmniRoute AI Provider
+      OMNIROUTE_BASE_URL: ${OMNIROUTE_BASE_URL:-http://host.docker.internal:20128/v1}
       OMNIROUTE_API_KEY: ${OMNIROUTE_API_KEY:-}
+      OMNIROUTE_MODEL: ${OMNIROUTE_MODEL:-gpt-4o-mini}
+      OMNIROUTE_TIMEOUT: ${OMNIROUTE_TIMEOUT:-120}
+      AI_TEMPERATURE: ${AI_TEMPERATURE:-0.1}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test:
         [

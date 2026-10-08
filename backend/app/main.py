@@ -22,6 +22,7 @@ from fastapi.responses import JSONResponse
 from app.api import api_router
 from app.config import settings
 from app.github.exceptions import GitHubException
+from app.services.ai.exceptions import AIException
 from app.logging_config import setup_logging
 
 # ── Bootstrap logging before any other imports use the logger ──────────────
@@ -68,6 +69,20 @@ app.add_middleware(
 @app.exception_handler(GitHubException)
 async def github_exception_handler(request: Request, exc: GitHubException) -> JSONResponse:
     """Format all GitHub errors consistently without exposing internals."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "detail": {
+                "code": exc.code,
+                "message": exc.message,
+            }
+        },
+    )
+
+
+@app.exception_handler(AIException)
+async def ai_exception_handler(request: Request, exc: AIException) -> JSONResponse:
+    """Format all AI/OmniRoute errors cleanly without exposing internal details."""
     return JSONResponse(
         status_code=exc.status_code,
         content={

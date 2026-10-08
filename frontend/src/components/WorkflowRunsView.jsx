@@ -8,6 +8,8 @@
 
 import React, { useState, useEffect } from 'react'
 import { getWorkflowRuns, getWorkflowJobs, getWorkflowLogs } from '../services/github'
+import { createInvestigation } from '../services/investigations'
+import InvestigationResultCard from './InvestigationResultCard'
 
 function StatusBadge({ status, conclusion, isFailed }) {
   if (isFailed) {
@@ -47,8 +49,18 @@ export default function WorkflowRunsView({ owner, repo }) {
   const [loadingLogs, setLoadingLogs] = useState(false)
   const [logsError, setLogsError] = useState(null)
 
+  // AI Investigation state
+  const [investigation, setInvestigation] = useState(null)
+  const [investigating, setInvestigating] = useState(false)
+  const [investigationError, setInvestigationError] = useState(null)
+
   // Status filter
   const [statusFilter, setStatusFilter] = useState('all')
+
+  useEffect(() => {
+    setInvestigation(null)
+    setInvestigationError(null)
+  }, [selectedRun?.id])
 
   useEffect(() => {
     let isMounted = true
@@ -120,6 +132,23 @@ export default function WorkflowRunsView({ owner, repo }) {
       setLogsError(err)
     } finally {
       setLoadingLogs(false)
+    }
+  }
+
+  async function handleInvestigate(run) {
+    if (investigating) return
+    const targetRun = run || selectedRun
+    if (!targetRun) return
+
+    setInvestigating(true)
+    setInvestigationError(null)
+    try {
+      const result = await createInvestigation(owner, repo, targetRun.id)
+      setInvestigation(result)
+    } catch (err) {
+      setInvestigationError(err)
+    } finally {
+      setInvestigating(false)
     }
   }
 
@@ -263,6 +292,18 @@ export default function WorkflowRunsView({ owner, repo }) {
                 conclusion={selectedRun.conclusion}
                 isFailed={selectedRun.is_failed}
               />
+              {selectedRun.is_failed && (
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={() => handleInvestigate(selectedRun)}
+                  disabled={investigating}
+                  aria-label="Investigate failure with AI"
+                  id="btn-investigate-ai"
+                >
+                  {investigating ? 'Analyzing with AI...' : 'Investigate with AI'}
+                </button>
+              )}
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
@@ -357,6 +398,41 @@ export default function WorkflowRunsView({ owner, repo }) {
             <p className="text-error" style={{ fontSize: 'var(--font-size-xs)', marginTop: '12px' }}>
               Could not retrieve logs: {logsError.message}
             </p>
+          )}
+
+          {/* AI Investigation Section */}
+          {investigating && (
+            <div className="empty-banner" style={{ marginTop: 'var(--space-6)' }} role="status">
+              <p style={{ color: 'var(--color-accent)', fontWeight: 600 }}>
+                Analyzing workflow run with AI DevOps Engine...
+              </p>
+              <p className="text-secondary" style={{ fontSize: 'var(--font-size-xs)', marginTop: '4px' }}>
+                Extracting failed jobs, sanitizing logs, and querying OmniRoute for root causes.
+              </p>
+            </div>
+          )}
+
+          {investigationError && (
+            <div className="error-banner" role="alert" style={{ marginTop: 'var(--space-6)' }}>
+              <div className="error-banner__title text-error">AI Investigation Failed</div>
+              <p className="error-banner__sub">{investigationError.message}</p>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => handleInvestigate(selectedRun)}
+              >
+                Retry AI Investigation
+              </button>
+            </div>
+          )}
+
+          {investigation && (
+            <div style={{ marginTop: 'var(--space-6)' }}>
+              <InvestigationResultCard
+                investigation={investigation}
+                onBack={() => setInvestigation(null)}
+              />
+            </div>
           )}
         </article>
       )}
