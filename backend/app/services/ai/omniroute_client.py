@@ -99,6 +99,7 @@ class OmniRouteClient:
             "model": selected_model,
             "messages": messages,
             "temperature": selected_temp,
+            "max_tokens": 4096,
         }
 
         logger.info(
