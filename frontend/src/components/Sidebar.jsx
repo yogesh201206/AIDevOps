@@ -58,6 +58,18 @@ const NAV_ITEMS = [
           </svg>
         ),
       },
+      {
+        path: '/kubernetes',
+        label: 'Kubernetes',
+        icon: (
+          <svg className="nav-item__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+            <circle cx="10" cy="10" r="8" />
+            <circle cx="10" cy="10" r="2.5" fill="currentColor" stroke="none" />
+            <path d="M10 2v3M10 15v3M2 10h3M15 10h3" strokeLinecap="round" />
+            <path d="M4.34 4.34l2.12 2.12M13.54 13.54l2.12 2.12M15.66 4.34l-2.12 2.12M6.46 13.54l-2.12 2.12" strokeLinecap="round" />
+          </svg>
+        ),
+      },
     ],
   },
   {
@@ -91,7 +103,7 @@ export default function Sidebar() {
         </div>
         <div className="sidebar__logo-text">
           <span className="sidebar__logo-title">AI DevOps Agent</span>
-          <span className="sidebar__logo-sub">v0.1 · phase 1</span>
+          <span className="sidebar__logo-sub">v0.5 · phase 5</span>
         </div>
       </div>
 
@@ -122,8 +134,8 @@ export default function Sidebar() {
       {/* Footer */}
       <div className="sidebar__footer">
         <div className="sidebar__version">
-          <span>Phase 1</span>
-          <span className="sidebar__env-badge">Foundation</span>
+          <span>Phase 5</span>
+          <span className="sidebar__env-badge">Kubernetes</span>
         </div>
       </div>
     </aside>

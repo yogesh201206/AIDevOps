@@ -30,6 +30,7 @@ class ContextBuilder:
         jobs: List[WorkflowJob],
         logs_content: Optional[str] = None,
         docker_context: Optional[str] = None,
+        kubernetes_context: Optional[str] = None,
     ) -> str:
         """
         Assemble human-readable structured context block.
@@ -100,6 +101,10 @@ class ContextBuilder:
         # Attach Docker Intelligence context if available (Phase 4)
         if docker_context and docker_context.strip():
             parts.append("\n" + docker_context.strip())
+
+        # Attach Kubernetes Intelligence context if available (Phase 5)
+        if kubernetes_context and kubernetes_context.strip():
+            parts.append("\n" + kubernetes_context.strip())
 
         raw_context = "\n".join(parts)
 

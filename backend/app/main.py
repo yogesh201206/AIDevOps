@@ -23,6 +23,7 @@ from app.api import api_router
 from app.config import settings
 from app.github.exceptions import GitHubException
 from app.services.ai.exceptions import AIException
+from app.services.kubernetes.exceptions import KubernetesException
 from app.logging_config import setup_logging
 
 # ── Bootstrap logging before any other imports use the logger ──────────────
@@ -83,6 +84,20 @@ async def github_exception_handler(request: Request, exc: GitHubException) -> JS
 @app.exception_handler(AIException)
 async def ai_exception_handler(request: Request, exc: AIException) -> JSONResponse:
     """Format all AI/OmniRoute errors cleanly without exposing internal details."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "detail": {
+                "code": exc.code,
+                "message": exc.message,
+            }
+        },
+    )
+
+
+@app.exception_handler(KubernetesException)
+async def kubernetes_exception_handler(request: Request, exc: KubernetesException) -> JSONResponse:
+    """Format all Kubernetes errors cleanly without exposing internal details or credentials."""
     return JSONResponse(
         status_code=exc.status_code,
         content={

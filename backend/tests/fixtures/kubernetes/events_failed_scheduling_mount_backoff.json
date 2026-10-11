@@ -1,0 +1,44 @@
+[
+  {
+    "type": "Warning",
+    "reason": "FailedScheduling",
+    "message": "0/5 nodes are available: 2 Insufficient memory, 3 node(s) had taint {node-role.kubernetes.io/master: } that the pod did not tolerate.",
+    "involvedObject": {
+      "kind": "Pod",
+      "name": "analytics-7f9c4-xkjqp",
+      "namespace": "analytics"
+    },
+    "count": 12,
+    "firstTimestamp": "2026-10-11T10:00:00Z",
+    "lastTimestamp": "2026-10-11T12:00:00Z",
+    "source": { "component": "default-scheduler" }
+  },
+  {
+    "type": "Warning",
+    "reason": "FailedMount",
+    "message": "MountVolume.SetUp failed for volume \"analytics-data\" : persistentvolumeclaim \"analytics-pvc\" not found",
+    "involvedObject": {
+      "kind": "Pod",
+      "name": "analytics-7f9c4-xkjqp",
+      "namespace": "analytics"
+    },
+    "count": 5,
+    "firstTimestamp": "2026-10-11T10:05:00Z",
+    "lastTimestamp": "2026-10-11T12:05:00Z",
+    "source": { "component": "kubelet" }
+  },
+  {
+    "type": "Warning",
+    "reason": "BackOff",
+    "message": "Back-off restarting failed container api in pod api-deploy-8f9b-mnopq_production",
+    "involvedObject": {
+      "kind": "Pod",
+      "name": "api-deploy-8f9b-mnopq",
+      "namespace": "production"
+    },
+    "count": 34,
+    "firstTimestamp": "2026-10-11T08:00:00Z",
+    "lastTimestamp": "2026-10-11T12:30:00Z",
+    "source": { "component": "kubelet" }
+  }
+]

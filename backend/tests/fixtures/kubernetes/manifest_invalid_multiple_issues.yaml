@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-frontend
+  namespace: staging
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web-frontend
+  template:
+    metadata:
+      labels:
+        app: web-frontend-MISMATCH
+    spec:
+      containers:
+        - name: web
+          image: MyRegistry.io/Web-Frontend:LATEST
+          ports:
+            - containerPort: 99999
+              name: this-port-name-is-way-too-long-over-15
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "100m"
+              memory: "128Mi"
+          readinessProbe:
+            initialDelaySeconds: -5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-frontend-svc
+  namespace: staging
+spec:
+  selector:
+    app: totally-different-app-label
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: web-ingress
+  namespace: staging
+spec:
+  rules:
+    - host: web.staging.example.com
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: web-frontend-svc
+              servicePort: 80

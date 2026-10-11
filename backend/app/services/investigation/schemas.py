@@ -8,6 +8,10 @@ from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.services.docker.schemas import DockerAnalysisResponse, DockerEvidence
+from app.services.kubernetes.schemas import (
+    KubernetesAnalysisResponse,
+    KubernetesEvidence,
+)
 
 
 class RootCause(BaseModel):
@@ -109,6 +113,14 @@ class InvestigationResponse(BaseModel):
     docker_analysis: Optional[DockerAnalysisResponse] = Field(
         None,
         description="Optional detailed Docker analysis response (Phase 4)",
+    )
+    kubernetes_evidence: List[KubernetesEvidence] = Field(
+        default_factory=list,
+        description="Structured Kubernetes evidence extracted during investigation (Phase 5)",
+    )
+    kubernetes_analysis: Optional[KubernetesAnalysisResponse] = Field(
+        None,
+        description="Optional detailed Kubernetes analysis response (Phase 5)",
     )
     error: Optional[str] = Field(
         None,

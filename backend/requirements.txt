@@ -13,3 +13,6 @@ pyyaml>=6.0.1
 # Testing
 pytest==9.1.1
 pytest-asyncio==1.4.0
+
+# Kubernetes (Phase 5)
+kubernetes>=31.0.0

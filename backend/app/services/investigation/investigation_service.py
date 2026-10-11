@@ -15,6 +15,7 @@ from app.config import settings
 from app.github.service import GitHubService
 from app.services.ai.ai_service import AIService
 from app.services.docker.docker_service import DockerService
+from app.services.kubernetes.kubernetes_service import KubernetesService
 from app.services.investigation.context_builder import ContextBuilder
 from app.services.investigation.schemas import (
     InvestigationListItem,
@@ -37,11 +38,13 @@ class InvestigationService:
         ai_service: Optional[AIService] = None,
         storage: Optional[InvestigationStorage] = None,
         docker_service: Optional[DockerService] = None,
+        kubernetes_service: Optional[KubernetesService] = None,
     ):
         self.github = github_service or GitHubService()
         self.ai = ai_service or AIService()
         self.storage = storage or InvestigationStorage.get_instance()
         self.docker = docker_service or DockerService()
+        self.kubernetes = kubernetes_service or KubernetesService()
         self.context_builder = ContextBuilder()
 
     async def investigate_workflow_run(
@@ -163,6 +166,19 @@ class InvestigationService:
                     len(docker_evidence),
                 )
 
+        # 5.1 Extract Kubernetes Intelligence evidence if logs are present (Phase 5)
+        kubernetes_evidence = []
+        kubernetes_context = None
+        if logs_content:
+            kubernetes_evidence = self.kubernetes.correlate_github_log(logs_content)
+            if kubernetes_evidence:
+                kubernetes_context = self.kubernetes.build_context_block(kubernetes_evidence)
+                logger.info(
+                    "Kubernetes evidence correlated from logs | run_id=%s evidence_count=%d",
+                    run_id,
+                    len(kubernetes_evidence),
+                )
+
         # 6. Build investigation context
         context = self.context_builder.build_context(
             owner=owner,
@@ -171,6 +187,7 @@ class InvestigationService:
             jobs=jobs,
             logs_content=logs_content,
             docker_context=docker_context,
+            kubernetes_context=kubernetes_context,
         )
 
         # 7. Send to AI provider via AIService / OmniRoute
@@ -212,6 +229,7 @@ class InvestigationService:
             provider="omniroute",
             created_at=now_iso,
             docker_evidence=docker_evidence,
+            kubernetes_evidence=kubernetes_evidence,
         )
 
         # 9. Persist to storage

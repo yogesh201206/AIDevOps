@@ -224,7 +224,87 @@ export default function InvestigationResultCard({ investigation, onBack }) {
         </section>
       )}
 
-      {/* Section 4: Affected Components */}
+      {/* Section 3.2: Kubernetes Intelligence Analysis (Phase 5) */}
+      {investigation.kubernetes_evidence && investigation.kubernetes_evidence.length > 0 && (
+        <section className="investigation-section" aria-label="Kubernetes Intelligence Analysis">
+          <h4 className="investigation-section__title">
+            <span>☸️ Kubernetes Intelligence ({investigation.kubernetes_evidence.length})</span>
+          </h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            {investigation.kubernetes_evidence.map((kev, idx) => {
+              const kevConf = getConfidenceMeta(kev.confidence)
+              const kevSev = (kev.severity || 'high').toLowerCase()
+              const isExpanded = expandedEvidence[`k8s_${idx}`] ?? true
+              return (
+                <div key={idx} className="evidence-card" style={{ borderLeft: '3px solid #7c3aed' }}>
+                  <div
+                    className="evidence-card__header"
+                    onClick={() => toggleEvidence(`k8s_${idx}`)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && toggleEvidence(`k8s_${idx}`)}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span className="badge badge--public" style={{ textTransform: 'capitalize', background: 'rgba(124,58,237,0.12)', color: '#7c3aed', border: '1px solid rgba(124,58,237,0.3)' }}>
+                        {kev.resource_kind}/{kev.namespace}
+                      </span>
+                      <span className={`severity-badge severity-badge--${kevSev}`} style={{ fontSize: '10px' }}>
+                        {kevSev.toUpperCase()}
+                      </span>
+                      <span className={`confidence-pill ${kevConf.className}`} style={{ fontSize: '10px' }}>
+                        {kevConf.label}
+                      </span>
+                      <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: 'var(--font-size-sm)' }}>
+                        {kev.message}
+                      </span>
+                    </div>
+                    <span className="text-secondary" style={{ fontSize: 'var(--font-size-xs)' }}>
+                      {isExpanded ? 'Hide Evidence ▲' : 'Show Evidence ▼'}
+                    </span>
+                  </div>
+                  {isExpanded && (
+                    <div className="evidence-card__body">
+                      <div style={{ marginBottom: '6px', fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
+                        <strong>Resource:</strong> {kev.resource_name} &nbsp;·&nbsp;
+                        <strong>Source:</strong> {kev.source} &nbsp;·&nbsp;
+                        <strong>Category:</strong> {kev.category}
+                      </div>
+                      {kev.probable_root_cause && (
+                        <div style={{ marginBottom: '6px', fontSize: 'var(--font-size-xs)' }}>
+                          <strong style={{ color: 'var(--color-text-secondary)' }}>Root Cause:</strong>{' '}
+                          {kev.probable_root_cause}
+                        </div>
+                      )}
+                      {kev.suggested_fix && (
+                        <div style={{ marginBottom: '6px', fontSize: 'var(--font-size-xs)', color: '#16a34a' }}>
+                          <strong>Suggested Fix:</strong> {kev.suggested_fix}
+                        </div>
+                      )}
+                      <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'var(--font-family-mono)', fontSize: 'var(--font-size-xs)' }}>
+                        {kev.evidence}
+                      </pre>
+                      {kev.validation_steps && kev.validation_steps.length > 0 && (
+                        <div style={{ marginTop: '8px' }}>
+                          <strong style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>Validation:</strong>
+                          <ul style={{ margin: '4px 0 0 0', paddingLeft: '16px' }}>
+                            {kev.validation_steps.map((step, si) => (
+                              <li key={si} style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)', fontFamily: 'var(--font-family-mono)' }}>
+                                {step}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+
       {investigation.affected_components && investigation.affected_components.length > 0 && (
         <section className="investigation-section">
           <h4 className="investigation-section__title">

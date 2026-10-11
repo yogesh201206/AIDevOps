@@ -12,6 +12,7 @@
  */
 
 import { useBackendStatus } from '../hooks/useBackendStatus'
+import KubernetesStatusCard from '../components/KubernetesStatusCard'
 
 /* ── Helpers ─────────────────────────────────────────────────── */
 
@@ -80,12 +81,12 @@ function SystemInfoCard() {
     <article className="card" aria-label="System information" id="system-info-card">
       <div className="card__header">
         <h2 className="card__title">Configuration</h2>
-        <span className="card__label">Phase 1</span>
+        <span className="card__label">Phase 5</span>
       </div>
       <div className="info-list">
         <div className="info-item">
           <span className="info-item__label">Phase</span>
-          <span className="info-item__value">1 · Foundation</span>
+          <span className="info-item__value">5 · Kubernetes Intelligence</span>
         </div>
         <div className="info-item">
           <span className="info-item__label">Frontend</span>
@@ -106,11 +107,11 @@ function SystemInfoCard() {
 
 function RoadmapCard() {
   const phases = [
-    { id: 1, label: 'Foundation',              status: 'active' },
-    { id: 2, label: 'GitHub Integration',      status: 'upcoming' },
-    { id: 3, label: 'AI Investigation Engine', status: 'upcoming' },
-    { id: 4, label: 'Docker & Kubernetes',     status: 'upcoming' },
-    { id: 5, label: 'Security & CI/CD',        status: 'upcoming' },
+    { id: 1, label: 'Foundation',                status: 'done' },
+    { id: 2, label: 'GitHub Integration',        status: 'done' },
+    { id: 3, label: 'AI Investigation Engine',   status: 'done' },
+    { id: 4, label: 'Docker Intelligence',       status: 'done' },
+    { id: 5, label: 'Kubernetes Intelligence',   status: 'active' },
   ]
 
   return (
@@ -131,10 +132,12 @@ function RoadmapCard() {
                 color:
                   phase.status === 'active'
                     ? 'var(--color-success)'
+                    : phase.status === 'done'
+                    ? 'var(--color-text-muted)'
                     : 'var(--color-text-muted)',
               }}
             >
-              {phase.status === 'active' ? 'In Progress' : 'Upcoming'}
+              {phase.status === 'active' ? '✅ Active' : phase.status === 'done' ? '✓ Complete' : 'Upcoming'}
             </span>
           </div>
         ))}
@@ -151,7 +154,7 @@ export default function Dashboard() {
       <div className="page-header">
         <h1 className="page-header__title" id="page-title">AI DevOps Agent</h1>
         <p className="page-header__subtitle">
-          Phase 1 foundation — backend connected, infrastructure ready.
+          Phase 5 — Kubernetes Intelligence active. Read-only cluster diagnostics, manifest analysis, and CI/CD correlation.
         </p>
       </div>
 
@@ -159,6 +162,7 @@ export default function Dashboard() {
         <BackendStatusCard />
         <SystemInfoCard />
         <RoadmapCard />
+        <KubernetesStatusCard />
       </div>
     </>
   )

@@ -1,0 +1,48 @@
+{
+  "apiVersion": "apps/v1",
+  "kind": "Deployment",
+  "metadata": {
+    "name": "backend-api",
+    "namespace": "production"
+  },
+  "spec": {
+    "replicas": 3,
+    "selector": {
+      "matchLabels": { "app": "backend-api" }
+    },
+    "template": {
+      "metadata": {
+        "labels": { "app": "backend-api" }
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "api",
+            "image": "myregistry.io/backend-api:v2.0.0"
+          }
+        ]
+      }
+    }
+  },
+  "status": {
+    "replicas": 3,
+    "updatedReplicas": 3,
+    "unavailableReplicas": 2,
+    "availableReplicas": 1,
+    "readyReplicas": 1,
+    "conditions": [
+      {
+        "type": "Available",
+        "status": "False",
+        "reason": "MinimumReplicasUnavailable",
+        "message": "Deployment does not have minimum availability."
+      },
+      {
+        "type": "Progressing",
+        "status": "False",
+        "reason": "ProgressDeadlineExceeded",
+        "message": "ReplicaSet \"backend-api-75d7c9bc4\" has timed out progressing."
+      }
+    ]
+  }
+}

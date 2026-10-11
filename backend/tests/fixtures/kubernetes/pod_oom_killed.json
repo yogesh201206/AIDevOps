@@ -1,0 +1,44 @@
+{
+  "apiVersion": "v1",
+  "kind": "Pod",
+  "metadata": {
+    "name": "ml-trainer-pod-xyz",
+    "namespace": "ml",
+    "creationTimestamp": "2026-10-11T12:10:00Z"
+  },
+  "spec": {
+    "containers": [
+      {
+        "name": "trainer",
+        "image": "tensorflow/tensorflow:2.14.0-gpu",
+        "resources": {
+          "limits": { "memory": "2Gi" }
+        }
+      }
+    ]
+  },
+  "status": {
+    "phase": "Failed",
+    "containerStatuses": [
+      {
+        "name": "trainer",
+        "image": "tensorflow/tensorflow:2.14.0-gpu",
+        "ready": false,
+        "restartCount": 2,
+        "state": {
+          "terminated": {
+            "exitCode": 137,
+            "reason": "OOMKilled",
+            "message": "Container exceeded memory limit"
+          }
+        },
+        "lastState": {
+          "terminated": {
+            "exitCode": 137,
+            "reason": "OOMKilled"
+          }
+        }
+      }
+    ]
+  }
+}
