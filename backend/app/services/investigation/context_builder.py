@@ -29,6 +29,7 @@ class ContextBuilder:
         run: WorkflowRun,
         jobs: List[WorkflowJob],
         logs_content: Optional[str] = None,
+        docker_context: Optional[str] = None,
     ) -> str:
         """
         Assemble human-readable structured context block.
@@ -95,6 +96,10 @@ class ContextBuilder:
         else:
             parts.append("\n--- RELEVANT EXECUTION LOGS ---")
             parts.append("No console log output was available for this workflow run.")
+
+        # Attach Docker Intelligence context if available (Phase 4)
+        if docker_context and docker_context.strip():
+            parts.append("\n" + docker_context.strip())
 
         raw_context = "\n".join(parts)
 

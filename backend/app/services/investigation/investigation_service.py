@@ -14,6 +14,7 @@ import uuid
 from app.config import settings
 from app.github.service import GitHubService
 from app.services.ai.ai_service import AIService
+from app.services.docker.docker_service import DockerService
 from app.services.investigation.context_builder import ContextBuilder
 from app.services.investigation.schemas import (
     InvestigationListItem,
@@ -35,10 +36,12 @@ class InvestigationService:
         github_service: Optional[GitHubService] = None,
         ai_service: Optional[AIService] = None,
         storage: Optional[InvestigationStorage] = None,
+        docker_service: Optional[DockerService] = None,
     ):
         self.github = github_service or GitHubService()
         self.ai = ai_service or AIService()
         self.storage = storage or InvestigationStorage.get_instance()
+        self.docker = docker_service or DockerService()
         self.context_builder = ContextBuilder()
 
     async def investigate_workflow_run(
@@ -147,16 +150,30 @@ class InvestigationService:
             len(logs_content) if logs_content else 0,
         )
 
-        # 5. Build investigation context
+        # 5. Extract Docker Intelligence evidence if logs are present (Phase 4)
+        docker_evidence = []
+        docker_context = None
+        if logs_content:
+            docker_evidence = self.docker.correlate_github_log(logs_content)
+            if docker_evidence:
+                docker_context = self.docker.build_context_block(docker_evidence)
+                logger.info(
+                    "Docker evidence correlated from logs | run_id=%s evidence_count=%d",
+                    run_id,
+                    len(docker_evidence),
+                )
+
+        # 6. Build investigation context
         context = self.context_builder.build_context(
             owner=owner,
             repo=repo,
             run=run,
             jobs=jobs,
             logs_content=logs_content,
+            docker_context=docker_context,
         )
 
-        # 6. Send to AI provider via AIService / OmniRoute
+        # 7. Send to AI provider via AIService / OmniRoute
         logger.info(
             "AI request started | investigation_id=%s context_len=%d",
             inv_id,
@@ -176,7 +193,7 @@ class InvestigationService:
             ai_output.overall_confidence,
         )
 
-        # 7. Assemble final response model
+        # 8. Assemble final response model
         response = InvestigationResponse(
             investigation_id=inv_id,
             repository=full_repo_name,
@@ -194,9 +211,10 @@ class InvestigationService:
             model=settings.OMNIROUTE_MODEL or "gpt-4o-mini",
             provider="omniroute",
             created_at=now_iso,
+            docker_evidence=docker_evidence,
         )
 
-        # 8. Persist to storage
+        # 9. Persist to storage
         self.storage.save(response)
 
         return response

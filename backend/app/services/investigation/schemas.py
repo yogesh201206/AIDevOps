@@ -4,8 +4,10 @@ Investigation and AI Pydantic schemas.
 Defines request/response contracts for the Phase 3 AI investigation engine.
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.services.docker.schemas import DockerAnalysisResponse, DockerEvidence
 
 
 class RootCause(BaseModel):
@@ -100,6 +102,14 @@ class InvestigationResponse(BaseModel):
     model: str = Field(..., description="AI model used for analysis")
     provider: str = Field(default="omniroute", description="AI provider abstraction name")
     created_at: str = Field(..., description="ISO 8601 timestamp of investigation creation")
+    docker_evidence: List[DockerEvidence] = Field(
+        default_factory=list,
+        description="Structured Docker evidence extracted during investigation (Phase 4)",
+    )
+    docker_analysis: Optional[DockerAnalysisResponse] = Field(
+        None,
+        description="Optional detailed Docker analysis response (Phase 4)",
+    )
     error: Optional[str] = Field(
         None,
         description="Error detail if investigation encountered a provider/processing issue",

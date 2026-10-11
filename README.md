@@ -21,9 +21,10 @@ AI DevOps Agent is built with a modular, layered architecture. Each phase expand
 |-------|------|--------|
 | **1** | Foundation & Health Architecture | ✅ Complete |
 | **2** | GitHub Integration (Workflows, Runs, Jobs, Logs) | ✅ Complete |
-| **3** | **AI Investigation Engine (OmniRoute, Log Redaction, RCA)** | ✅ **Complete (Current)** |
-| **4** | Docker & Kubernetes Intelligence | Upcoming |
-| **5** | MCP & Advanced Infrastructure Tooling | Upcoming |
+| **3** | AI Investigation Engine (OmniRoute, Log Redaction, RCA) | ✅ Complete |
+| **4** | **Docker Intelligence (Static Analysis, Logs, Containers, Compose)** | ✅ **Complete (Current)** |
+| **5** | Kubernetes & Advanced Infrastructure Tooling | Upcoming |
+| **6** | MCP & Autonomous Remediation | Upcoming |
 
 ---
 
@@ -278,7 +279,7 @@ For host-to-container communication with a locally running OmniRoute on Linux, `
 
 ## Testing
 
-All tests are completely offline and use mocked GitHub and OmniRoute transports.
+All tests are completely offline and use mocked GitHub, Docker, and OmniRoute transports. No real Docker daemon is required for unit tests.
 
 ### Run Backend Tests
 
@@ -288,7 +289,7 @@ source .venv/bin/activate
 pytest -v
 ```
 
-**Results**: 58 passed (covers health endpoints, GitHub integration, OmniRoute client, parser validation, log redaction, large log truncation, context builder, and investigation history).
+**Results**: **96 passed** (58 baseline Phase 1–3 tests + 38 Phase 4 Docker intelligence tests covering Dockerfile analysis, build log parsing, image reference validation, container diagnostics, Docker Compose validation, safe CLI executor, and pipeline integration).
 
 ### Run Frontend Tests
 
@@ -297,7 +298,7 @@ cd frontend
 npm test
 ```
 
-**Results**: 27 passed across 3 test files (smoke tests, repositories, and AI investigations).
+**Results**: **28 passed** across 3 test files (smoke tests, repositories, and AI investigations with Docker Intelligence section verification).
 
 ### Build Frontend Bundle
 
@@ -308,7 +309,53 @@ npm run build
 
 ---
 
-## Phase 3 REST API Endpoints
+## Phase 4 — Docker Intelligence
+
+Phase 4 adds comprehensive, **read-only Docker diagnostics** to the AI DevOps Agent.
+
+### Architecture & Capabilities
+
+```
+GitHub Workflow / Docker Logs / Artifacts
+                 │
+                 ▼
+      Docker Intelligence Layer
+    ├── Dockerfile Static Analyzer (AST & regex-based syntax, tags, secret ENV, multi-stage)
+    ├── Build Log Analyzer (BuildKit, pull access denied, manifest unknown, exit codes, OOM)
+    ├── Image Reference Analyzer (OCI parsing, missing tags, mutable tags, naming checks)
+    ├── Container Diagnostics (Exit codes, crash loops, health checks, port collisions, secret scrub)
+    ├── Docker Compose Analyzer (YAML syntax, depends_on graphs, host port collisions, env vars)
+    └── Safe Docker Executor (Strict allowlist: version, info, ps, inspect, images, logs)
+                 │
+                 ▼
+       Structured DockerEvidence
+                 │
+                 ▼
+       Combined Investigation Context
+                 │
+                 ▼
+          OmniRoute AI (RCA + Fixes + Validation Steps)
+                 │
+                 ▼
+       Investigation Dashboard (🐳 Docker Intelligence Card)
+```
+
+### Safety & Scope Rules
+
+- **Strictly Read-Only**: The agent only inspects Docker configurations, logs, and container states.
+- **Forbidden Mutating Commands**: Commands such as `docker rm`, `docker rmi`, `docker prune`, `docker exec`, and shell execution are strictly disallowed and blocked by policy.
+- **Secret Redaction**: Environment variables and logs are automatically sanitized to prevent credential leakage.
+
+---
+
+## REST API Endpoints
+
+### Docker Intelligence Endpoints (Phase 4)
+- `POST /api/v1/docker/analyze`
+  - Body: `DockerAnalysisRequest` (`dockerfile_content`, `build_log`, `compose_content`, `container_info`, `container_logs`, `image_reference`, `github_actions_log`)
+  - Returns: `DockerAnalysisResponse` with structured findings, severity, and AI-formatted context block.
+- `GET /api/v1/docker/status`
+  - Returns Docker daemon availability status and read-only version info.
 
 ### AI Provider Status
 - `GET /api/v1/ai/status`
@@ -317,9 +364,9 @@ npm run build
 ### Investigation Endpoints
 - `POST /api/v1/investigations`
   - Body: `{ "owner": "org", "repo": "repo-name", "run_id": 12345 }`
-  - Dispatches failure analysis, extracts failed steps and preceding steps, sanitizes logs, queries OmniRoute, and returns structured diagnosis.
+  - Dispatches failure analysis, extracts failed steps, correlates Docker evidence, sanitizes logs, queries OmniRoute, and returns structured diagnosis.
 - `GET /api/v1/investigations`
   - Query parameters: `repository`, `limit`.
   - Returns historical investigation records sorted newest first.
 - `GET /api/v1/investigations/{investigation_id}`
-  - Returns detailed report for a specific investigation.
+  - Returns detailed report for a specific investigation with optional Docker evidence.

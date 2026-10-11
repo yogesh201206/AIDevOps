@@ -144,6 +144,29 @@ describe('InvestigationResultCard Tests', () => {
     fireEvent.click(toggleBtn)
     expect(screen.getByText(/Process exited with status 1/i)).toBeInTheDocument()
   })
+
+  it('renders Docker Intelligence section when docker evidence is present', () => {
+    const dockerResult = {
+      ...mockInvestigationResult,
+      docker_evidence: [
+        {
+          source: 'Docker Build',
+          component: 'build',
+          category: 'failed_to_solve',
+          severity: 'high',
+          message: 'Docker BuildKit solver failed to complete the build graph.',
+          evidence: 'ERROR: failed to solve: failed to compute cache key',
+          confidence: 0.95,
+        },
+      ],
+    }
+
+    render(<InvestigationResultCard investigation={dockerResult} />)
+    expect(screen.getByText(/🐳 Docker Intelligence/i)).toBeInTheDocument()
+    expect(screen.getByText(/Component: build/i)).toBeInTheDocument()
+    expect(screen.getByText(/Docker BuildKit solver failed/i)).toBeInTheDocument()
+    expect(screen.getByText(/ERROR: failed to solve/i)).toBeInTheDocument()
+  })
 })
 
 describe('WorkflowRunsView "Investigate with AI" Tests', () => {

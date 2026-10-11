@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  web:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+
+  api:
+    image: python:3.11-slim
+    ports:
+      - "8080:5000"

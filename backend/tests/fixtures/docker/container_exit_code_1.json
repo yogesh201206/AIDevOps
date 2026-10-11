@@ -1,0 +1,28 @@
+{
+  "Id": "c4791a82f3a948e3d09a287114b01e3b6d396a84c8cf7130a08e6840742d45a9",
+  "Name": "/devops-api-service",
+  "Created": "2026-10-09T12:00:00.000000000Z",
+  "State": {
+    "Status": "exited",
+    "Running": false,
+    "Paused": false,
+    "Restarting": false,
+    "OOMKilled": false,
+    "Dead": false,
+    "Pid": 0,
+    "ExitCode": 1,
+    "Error": "",
+    "StartedAt": "2026-10-09T12:00:01.000000000Z",
+    "FinishedAt": "2026-10-09T12:00:03.000000000Z"
+  },
+  "RestartCount": 5,
+  "Config": {
+    "Image": "devops-api:v1.0",
+    "Env": [
+      "PORT=8000",
+      "ENVIRONMENT=production",
+      "DATABASE_URL=postgres://user:[REDACTED_SECRET]@db:5432/app",
+      "API_KEY=[REDACTED_SECRET]"
+    ]
+  }
+}

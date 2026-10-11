@@ -169,6 +169,61 @@ export default function InvestigationResultCard({ investigation, onBack }) {
         </section>
       )}
 
+      {/* Section 3.1: Docker Intelligence Analysis (Phase 4) */}
+      {investigation.docker_evidence && investigation.docker_evidence.length > 0 && (
+        <section className="investigation-section" aria-label="Docker Intelligence Analysis">
+          <h4 className="investigation-section__title">
+            <span>🐳 Docker Intelligence ({investigation.docker_evidence.length})</span>
+          </h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            {investigation.docker_evidence.map((dev, idx) => {
+              const devConf = getConfidenceMeta(dev.confidence)
+              const devSev = (dev.severity || 'high').toLowerCase()
+              const isExpanded = expandedEvidence[`docker_${idx}`] ?? true
+              return (
+                <div key={idx} className="evidence-card" style={{ borderLeft: '3px solid var(--color-primary)' }}>
+                  <div
+                    className="evidence-card__header"
+                    onClick={() => toggleEvidence(`docker_${idx}`)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && toggleEvidence(`docker_${idx}`)}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span className="badge badge--public" style={{ textTransform: 'capitalize' }}>
+                        Component: {dev.component}
+                      </span>
+                      <span className={`severity-badge severity-badge--${devSev}`} style={{ fontSize: '10px' }}>
+                        {devSev.toUpperCase()}
+                      </span>
+                      <span className={`confidence-pill ${devConf.className}`} style={{ fontSize: '10px' }}>
+                        {devConf.label}
+                      </span>
+                      <span style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: 'var(--font-size-sm)' }}>
+                        {dev.message}
+                      </span>
+                    </div>
+                    <span className="text-secondary" style={{ fontSize: 'var(--font-size-xs)' }}>
+                      {isExpanded ? 'Hide Evidence ▲' : 'Show Evidence ▼'}
+                    </span>
+                  </div>
+                  {isExpanded && (
+                    <div className="evidence-card__body">
+                      <div style={{ marginBottom: '6px', fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)' }}>
+                        <strong>Source:</strong> {dev.source} · <strong>Category:</strong> {dev.category}
+                      </div>
+                      <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'var(--font-family-mono)', fontSize: 'var(--font-size-xs)' }}>
+                        {dev.evidence}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Section 4: Affected Components */}
       {investigation.affected_components && investigation.affected_components.length > 0 && (
         <section className="investigation-section">

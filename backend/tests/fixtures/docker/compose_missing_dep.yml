@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  web:
+    image: nginx:alpine
+    depends_on:
+      - non_existent_database_service
+    ports:
+      - "80:80"
